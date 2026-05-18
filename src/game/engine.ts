@@ -1,11 +1,10 @@
 import Konva from 'konva'
-import { createSolarSystem, createPlayer } from './solarSystem.js'
-import { InputSystem } from './input.js'
-import { Camera } from './camera.js'
-import { PhysicsSystem } from './physics.js'
-import { CollisionSystem } from './collision.js'
+import { createSolarSystem, createPlayer } from './solarSystem'
+import { InputSystem } from './input'
+import { Camera } from './camera'
+import { PhysicsSystem } from './physics'
+import { CollisionSystem } from './collision'
 import {
-  FIXED_DT,
   MAX_STEP_DT,
   MAX_SIM_STEPS,
   THRUST_LEVELS,
@@ -17,10 +16,33 @@ import {
   MIN_SCREEN_RADIUS_SUN,
   MIN_SCREEN_RADIUS_PLAYER,
   C,
-} from './constants.js'
+} from './constants'
+import type { GameObject } from './gameObjects'
+
+type HudKey = 'speed' | 'force' | 'gamma' | 'thrust' | 'time' | 'zoom'
+type Vec2 = { x: number, y: number }
 
 export class GameEngine {
-  constructor(stageElement) {
+  stageWidth: number
+  stageHeight: number
+  stage: Konva.Stage
+  private gameLayer: Konva.Layer
+  private hudLayer: Konva.Layer
+  private physics: PhysicsSystem
+  private collision: CollisionSystem
+  private input: InputSystem
+  private camera: Camera
+  private objects: GameObject[]
+  private player: GameObject
+  private nodeMap: Map<string, Konva.Circle>
+  private velocityArrow: Konva.Arrow
+  private forceArrow: Konva.Arrow
+  private hudTexts: Record<HudKey, Konva.Text>
+  private _lastTime: number
+  private _rafId: number | null
+  private readonly _boundResize: () => void
+
+  constructor(stageElement: HTMLDivElement) {
     this.stageWidth = window.innerWidth
     this.stageHeight = window.innerHeight
 
@@ -41,14 +63,15 @@ export class GameEngine {
     this.camera = new Camera(this.stageWidth, this.stageHeight)
 
     this.objects = createSolarSystem()
-    this.player = null
+    this.player = this.objects[0]
     this.nodeMap = new Map()
 
     this._initPlayer()
 
     this.input.attach(this.stage.container())
 
-    window.addEventListener('resize', this._onResize.bind(this))
+    this._boundResize = this._onResize.bind(this)
+    window.addEventListener('resize', this._boundResize)
 
     this._lastTime = performance.now()
 
@@ -73,8 +96,8 @@ export class GameEngine {
     this.gameLayer.add(this.velocityArrow)
     this.gameLayer.add(this.forceArrow)
 
-    this.hudTexts = {}
-    const hudLines = [
+    this.hudTexts = {} as Record<HudKey, Konva.Text>
+    const hudLines: Array<{ key: HudKey, y: number }> = [
       { key: 'speed', y: 16 },
       { key: 'force', y: 38 },
       { key: 'gamma', y: 60 },
@@ -96,16 +119,24 @@ export class GameEngine {
     }
 
     this._syncNodes()
-    this._loop(performance.now())
+    this._rafId = requestAnimationFrame((t) => this._loop(t))
   }
 
-  _initPlayer() {
+  destroy(): void {
+    if (this._rafId !== null) cancelAnimationFrame(this._rafId)
+    window.removeEventListener('resize', this._boundResize)
+    this.input.detach(this.stage.container())
+    this.stage.destroy()
+  }
+
+  private _initPlayer(): void {
     const earth = this.objects.find(o => o.label === 'Earth')
+    if (!earth) throw new Error('Earth not found in solar system objects')
     this.player = createPlayer(earth)
     this.objects.push(this.player)
   }
 
-  _onResize() {
+  private _onResize(): void {
     this.stageWidth = window.innerWidth
     this.stageHeight = window.innerHeight
     this.stage.width(this.stageWidth)
@@ -113,7 +144,7 @@ export class GameEngine {
     this.camera.resize(this.stageWidth, this.stageHeight)
   }
 
-  _syncNodes() {
+  private _syncNodes(): void {
     const currentIds = new Set(this.objects.map(o => o.id))
 
     for (const [id, node] of this.nodeMap) {
@@ -140,8 +171,8 @@ export class GameEngine {
     }
   }
 
-  _loop(now) {
-    requestAnimationFrame((t) => this._loop(t))
+  private _loop(now: number): void {
+    this._rafId = requestAnimationFrame((t) => this._loop(t))
 
     let dt = (now - this._lastTime) / 1000
     this._lastTime = now
@@ -150,7 +181,10 @@ export class GameEngine {
     const pan = this.input.getPanDelta()
     if (pan) {
       this.camera.pan(-pan.x, -pan.y)
-      this.input.panStart = { x: this.input.panCurrent.x, y: this.input.panCurrent.y }
+      const current = this.input.panCurrent
+      if (current) {
+        this.input.panStart = { x: current.x, y: current.y }
+      }
     } else {
       this.camera.decayPan()
     }
@@ -175,7 +209,7 @@ export class GameEngine {
     this._render()
   }
 
-  _fixedUpdate(thrust, dt) {
+  private _fixedUpdate(thrust: Vec2, dt: number): void {
     this.physics.beginFrame(this.objects)
     this.physics.applyThrust(this.player, thrust.x, thrust.y)
     this.physics.addGravity(this.objects)
@@ -185,8 +219,8 @@ export class GameEngine {
     this.camera.follow(this.player)
   }
 
-  _render() {
-    const { stageWidth, stageHeight, camera, player } = this
+  private _render(): void {
+    const { camera, player } = this
 
     camera.keepPlayerVisible(player.posX, player.posY)
 
@@ -238,7 +272,7 @@ export class GameEngine {
     this.stage.batchDraw()
   }
 
-  _drawArrows(player) {
+  private _drawArrows(player: GameObject): void {
     const { camera, velocityArrow, forceArrow, stageHeight } = this
 
     const sp = camera.worldToScreen(player.posX, player.posY)

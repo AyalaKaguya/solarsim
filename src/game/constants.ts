@@ -22,7 +22,7 @@ export const CAMERA_PAN_LERP = 0.12
 
 export const THRUST_LEVELS = [1e5, 1e6, 1e7]
 
-export const TIME_SCALE_MAP = {
+export const TIME_SCALE_MAP: Record<string, number> = {
   '7': 1,
   '8': 60,
   '9': 3600,
@@ -40,9 +40,19 @@ export const MIN_SCREEN_RADIUS_PLANET = 3
 export const MIN_SCREEN_RADIUS_SUN = 15
 export const MIN_SCREEN_RADIUS_PLAYER = 5
 
-export const FIXED_DT = 1 / 60
+export interface PlanetDefinition {
+  label: string
+  a: number
+  e: number
+  ω: number
+  M0: number
+  mass: number
+  radius: number
+  density: number
+  color: string
+}
 
-export const PLANETS = [
+export const PLANETS: PlanetDefinition[] = [
   {
     label: 'Mercury',
     a: 5.79091e10,
