@@ -1,7 +1,11 @@
+import type { CollisionType, GameObject } from './gameObjects'
+
+type CollisionHandler = (a: GameObject, b: GameObject, dist: number, nx: number, ny: number) => void
+
 export const COLLISION_HANDLERS = {
-  elastic: null,
-  inelastic: null,
-  fragment: null,
+  elastic: null as CollisionHandler | null,
+  inelastic: null as CollisionHandler | null,
+  fragment: null as CollisionHandler | null,
 }
 
 COLLISION_HANDLERS.elastic = function resolveElastic(a, b, dist, nx, ny) {
@@ -44,16 +48,16 @@ COLLISION_HANDLERS.elastic = function resolveElastic(a, b, dist, nx, ny) {
   }
 }
 
-COLLISION_HANDLERS.inelastic = function resolveInelastic(a, b, dist, nx, ny) {
+COLLISION_HANDLERS.inelastic = function resolveInelastic(_a, _b, _dist, _nx, _ny) {
   throw new Error('Inelastic collision not yet implemented')
 }
 
-COLLISION_HANDLERS.fragment = function resolveFragment(a, b, dist, nx, ny) {
+COLLISION_HANDLERS.fragment = function resolveFragment(_a, _b, _dist, _nx, _ny) {
   throw new Error('Fragment collision not yet implemented')
 }
 
 export class CollisionSystem {
-  process(objects) {
+  process(objects: GameObject[]): void {
     const count = objects.length
     for (let i = 0; i < count; i++) {
       for (let j = i + 1; j < count; j++) {
@@ -73,7 +77,7 @@ export class CollisionSystem {
         const nx = dx / dist
         const ny = dy / dist
 
-        const handlerName = a.collisionType === 'elastic' && b.collisionType === 'elastic'
+        const handlerName: CollisionType = a.collisionType === 'elastic' && b.collisionType === 'elastic'
           ? 'elastic'
           : a.collisionType
 

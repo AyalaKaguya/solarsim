@@ -1,9 +1,9 @@
-import { G, SOLAR_MASS, SOLAR_RADIUS, PLANETS, PLAYER_MASS, PLAYER_DENSITY } from './constants.js'
-import { createGameObject } from './gameObjects.js'
+import { G, SOLAR_MASS, SOLAR_RADIUS, PLANETS, PLAYER_MASS, PLAYER_DENSITY } from './constants'
+import { createGameObject, type GameObject } from './gameObjects'
 
 const MU = G * SOLAR_MASS
 
-function solveKepler(M, e) {
+function solveKepler(M: number, e: number): number {
   let E = M
   for (let i = 0; i < 30; i++) {
     const sinE = Math.sin(E)
@@ -15,7 +15,7 @@ function solveKepler(M, e) {
   return E
 }
 
-function computeOrbitalState(a, e, ω, M0) {
+function computeOrbitalState(a: number, e: number, ω: number, M0: number) {
   const E = solveKepler(M0, e)
   const cosE = Math.cos(E)
   const sinE = Math.sin(E)
@@ -43,7 +43,7 @@ function computeOrbitalState(a, e, ω, M0) {
 }
 
 export function createSolarSystem() {
-  const objects = []
+  const objects: GameObject[] = []
 
   objects.push(
     createGameObject({
@@ -83,7 +83,7 @@ export function createSolarSystem() {
   return objects
 }
 
-export function createPlayer(earth) {
+export function createPlayer(earth: GameObject): GameObject {
   const orbitRadius = earth.radius + 400000
   const orbitalSpeed = Math.sqrt(G * earth.mass / orbitRadius)
   const player = createGameObject({

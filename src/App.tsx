@@ -1,14 +1,14 @@
 import { useEffect, useRef } from 'react'
-import { GameEngine } from './game/engine.js'
+import { GameEngine } from './game/engine'
 
 function App() {
-  const containerRef = useRef(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!containerRef.current) return
     const engine = new GameEngine(containerRef.current)
     return () => {
-      engine.stage.destroy()
+      engine.destroy()
     }
   }, [])
 
