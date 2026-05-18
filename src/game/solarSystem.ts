@@ -1,7 +1,14 @@
-import { G, SOLAR_MASS, SOLAR_RADIUS, PLANETS, PLAYER_MASS, PLAYER_DENSITY } from './constants'
+import {
+  G,
+  SOLAR_MASS,
+  SOLAR_RADIUS,
+  PLANETS,
+  SATELLITES,
+  PLAYER_MASS,
+  PLAYER_DENSITY,
+  type OrbitingBodyDefinition,
+} from './constants'
 import { createGameObject, type GameObject } from './gameObjects'
-
-const MU = G * SOLAR_MASS
 
 function solveKepler(M: number, e: number): number {
   let E = M
@@ -15,7 +22,14 @@ function solveKepler(M: number, e: number): number {
   return E
 }
 
-function computeOrbitalState(a: number, e: number, ω: number, M0: number) {
+function computeOrbitalState(
+  a: number,
+  e: number,
+  ω: number,
+  M0: number,
+  mu: number,
+  direction: 1 | -1 = 1,
+) {
   const E = solveKepler(M0, e)
   const cosE = Math.cos(E)
   const sinE = Math.sin(E)
@@ -32,52 +46,75 @@ function computeOrbitalState(a: number, e: number, ω: number, M0: number) {
   const posX = r * cosA
   const posY = r * sinA
 
-  const h = Math.sqrt(MU * a * (1 - e * e))
-  const vr = (MU / h) * e * Math.sin(nu)
+  const h = Math.sqrt(mu * a * (1 - e * e))
+  const vr = (mu / h) * e * Math.sin(nu)
   const vt = h / r
 
-  const velX = vr * cosA - vt * sinA
-  const velY = vr * sinA + vt * cosA
+  const velX = vr * cosA - direction * vt * sinA
+  const velY = vr * sinA + direction * vt * cosA
 
   return { posX, posY, velX, velY }
 }
 
-export function createSolarSystem() {
-  const objects: GameObject[] = []
-
-  objects.push(
-    createGameObject({
-      label: 'Sun',
-      posX: 0,
-      posY: 0,
-      velX: 0,
-      velY: 0,
-      mass: SOLAR_MASS,
-      radius: SOLAR_RADIUS,
-      density: 1408,
-      isStatic: true,
-      collisionType: 'elastic',
-      color: '#f5c842',
-    })
+function createOrbitingBody(definition: OrbitingBodyDefinition, parent: GameObject): GameObject {
+  const state = computeOrbitalState(
+    definition.a,
+    definition.e,
+    definition.ω,
+    definition.M0,
+    G * parent.mass,
+    definition.direction,
   )
 
+  return createGameObject({
+    label: definition.label,
+    posX: parent.posX + state.posX,
+    posY: parent.posY + state.posY,
+    velX: parent.velX + state.velX,
+    velY: parent.velY + state.velY,
+    mass: definition.mass,
+    radius: definition.radius,
+    density: definition.density,
+    isStatic: false,
+    collisionType: 'elastic',
+    color: definition.color,
+  })
+}
+
+export function createSolarSystem() {
+  const objects: GameObject[] = []
+  const bodyByLabel = new Map<string, GameObject>()
+
+  const sun = createGameObject({
+    label: 'Sun',
+    posX: 0,
+    posY: 0,
+    velX: 0,
+    velY: 0,
+    mass: SOLAR_MASS,
+    radius: SOLAR_RADIUS,
+    density: 1408,
+    isStatic: true,
+    collisionType: 'elastic',
+    color: '#f5c842',
+  })
+  objects.push(sun)
+  bodyByLabel.set(sun.label, sun)
+
   for (const p of PLANETS) {
-    const state = computeOrbitalState(p.a, p.e, p.ω, p.M0)
-    objects.push(
-      createGameObject({
-        label: p.label,
-        posX: state.posX,
-        posY: state.posY,
-        velX: state.velX,
-        velY: state.velY,
-        mass: p.mass,
-        radius: p.radius,
-        density: p.density,
-        isStatic: false,
-        collisionType: 'elastic',
-        color: p.color,
-      })
-    )
+    const parent = bodyByLabel.get(p.parentLabel)
+    if (!parent) throw new Error(`Parent body ${p.parentLabel} not found for ${p.label}`)
+    const planet = createOrbitingBody(p, parent)
+    objects.push(planet)
+    bodyByLabel.set(planet.label, planet)
+  }
+
+  for (const satellite of SATELLITES) {
+    const parent = bodyByLabel.get(satellite.parentLabel)
+    if (!parent) throw new Error(`Parent body ${satellite.parentLabel} not found for ${satellite.label}`)
+    const moon = createOrbitingBody(satellite, parent)
+    objects.push(moon)
+    bodyByLabel.set(moon.label, moon)
   }
 
   return objects

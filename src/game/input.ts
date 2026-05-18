@@ -1,6 +1,7 @@
 import { THRUST_LEVELS, TIME_SCALE_MAP } from './constants'
 
 type Vec2 = { x: number, y: number }
+export type VelocityReferenceMode = 'off' | 'solar' | 'dominant-body'
 
 export class InputSystem {
   keys: Record<string, boolean>
@@ -12,6 +13,8 @@ export class InputSystem {
   private _thrustLevel: number
   private _timeScale: number
   private _forceDisplayMode: number
+  private _velocityReferenceMode: VelocityReferenceMode
+  private _showTrajectoryPrediction: boolean
 
   private _onKeyDown: (e: KeyboardEvent) => void
   private _onKeyUp: (e: KeyboardEvent) => void
@@ -30,6 +33,8 @@ export class InputSystem {
     this._thrustLevel = 0
     this._timeScale = 1
     this._forceDisplayMode = 1
+    this._velocityReferenceMode = 'dominant-body'
+    this._showTrajectoryPrediction = true
 
     this._onKeyDown = this._onKeyDownImpl.bind(this)
     this._onKeyUp = this._onKeyUpImpl.bind(this)
@@ -66,6 +71,20 @@ export class InputSystem {
     else if (k === 'i') {
       if (!this._toggleKeys.has(k)) {
         this._forceDisplayMode = (this._forceDisplayMode + 1) % 3
+        this._toggleKeys.add(k)
+      }
+    }
+    else if (k === 'j') {
+      if (!this._toggleKeys.has(k)) {
+        if (this._velocityReferenceMode === 'off') this._velocityReferenceMode = 'solar'
+        else if (this._velocityReferenceMode === 'solar') this._velocityReferenceMode = 'dominant-body'
+        else this._velocityReferenceMode = 'off'
+        this._toggleKeys.add(k)
+      }
+    }
+    else if (k === 'k') {
+      if (!this._toggleKeys.has(k)) {
+        this._showTrajectoryPrediction = !this._showTrajectoryPrediction
         this._toggleKeys.add(k)
       }
     }
@@ -139,6 +158,14 @@ export class InputSystem {
 
   getForceDisplayMode(): number {
     return this._forceDisplayMode
+  }
+
+  getVelocityReferenceMode(): VelocityReferenceMode {
+    return this._velocityReferenceMode
+  }
+
+  getShowTrajectoryPrediction(): boolean {
+    return this._showTrajectoryPrediction
   }
 
   consumeWheel(): number {
