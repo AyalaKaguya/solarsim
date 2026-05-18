@@ -272,7 +272,10 @@ export class GameEngine {
       this.camera.zoom(wheel)
     }
 
-    const thrust = this.input.getThrustForce()
+    const thrust = this.input.getThrustForce({
+      x: this.player.velX,
+      y: this.player.velY,
+    })
     const timeScale = this.input.getTimeScale()
 
     let remaining = dt * timeScale
@@ -288,11 +291,24 @@ export class GameEngine {
   }
 
   private _fixedUpdate(thrust: Vec2, dt: number): void {
+    const prevVelX = this.player.velX
+    const prevVelY = this.player.velY
+    const prevSpeedSq = prevVelX * prevVelX + prevVelY * prevVelY
+
     this.physics.beginFrame(this.objects)
     this.physics.applyThrust(this.player, thrust.x, thrust.y)
     this.physics.addGravity(this.objects)
     this.physics.addDrag(this.objects)
     this.physics.integrate(this.objects, dt)
+
+    if (this.input.isVelocityBrakeActive() && prevSpeedSq > 1e-9) {
+      const velocityDot = prevVelX * this.player.velX + prevVelY * this.player.velY
+      if (velocityDot <= 0) {
+        this.player.velX = 0
+        this.player.velY = 0
+      }
+    }
+
     this.collision.process(this.objects)
     this.camera.follow(this.player)
   }
@@ -346,7 +362,7 @@ export class GameEngine {
     const ts = this.input.getTimeScale()
     const timeLabel = ts >= 86400 ? 'day' : ts >= 3600 ? 'hour' : ts >= 60 ? 'minute' : 'second'
     this.hudTexts.time.text(
-      `Time: ${ts}x  (per ${timeLabel})  [7|8|9|0]`
+      `Time: ${ts}x  (per ${timeLabel})  [+|-|7|8|9|0]`
     )
     this.hudTexts.zoom.text(
       `Zoom: ${mpp.toExponential(2)} m/px`

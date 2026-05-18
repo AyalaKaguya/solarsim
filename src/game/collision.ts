@@ -1,6 +1,17 @@
+import { C2, SPEED_LIMIT } from './constants'
 import type { CollisionType, GameObject } from './gameObjects'
 
 type CollisionHandler = (a: GameObject, b: GameObject, dist: number, nx: number, ny: number) => void
+
+function computeVelocityFromMomentum(px: number, py: number, mass: number): { vx: number, vy: number, gamma: number } {
+  const p2 = px * px + py * py
+  const gamma = Math.sqrt(1 + p2 / (mass * mass * C2))
+  return {
+    vx: px / (gamma * mass),
+    vy: py / (gamma * mass),
+    gamma,
+  }
+}
 
 export const COLLISION_HANDLERS = {
   elastic: null as CollisionHandler | null,
@@ -22,13 +33,40 @@ COLLISION_HANDLERS.elastic = function resolveElastic(a, b, dist, nx, ny) {
 
   const j = 2 * vrn / invSum
 
+  let momentumAX = a.gamma * a.mass * a.velX
+  let momentumAY = a.gamma * a.mass * a.velY
+  let momentumBX = b.gamma * b.mass * b.velX
+  let momentumBY = b.gamma * b.mass * b.velY
+
   if (!a.isStatic) {
-    a.velX -= j * maInv * nx
-    a.velY -= j * maInv * ny
+    momentumAX -= j * nx
+    momentumAY -= j * ny
+    const nextA = computeVelocityFromMomentum(momentumAX, momentumAY, a.mass)
+    a.velX = nextA.vx
+    a.velY = nextA.vy
+    a.gamma = nextA.gamma
+
+    const speedA = Math.sqrt(a.velX * a.velX + a.velY * a.velY)
+    if (speedA > SPEED_LIMIT) {
+      const scale = SPEED_LIMIT / speedA
+      a.velX *= scale
+      a.velY *= scale
+    }
   }
   if (!b.isStatic) {
-    b.velX += j * mbInv * nx
-    b.velY += j * mbInv * ny
+    momentumBX += j * nx
+    momentumBY += j * ny
+    const nextB = computeVelocityFromMomentum(momentumBX, momentumBY, b.mass)
+    b.velX = nextB.vx
+    b.velY = nextB.vy
+    b.gamma = nextB.gamma
+
+    const speedB = Math.sqrt(b.velX * b.velX + b.velY * b.velY)
+    if (speedB > SPEED_LIMIT) {
+      const scale = SPEED_LIMIT / speedB
+      b.velX *= scale
+      b.velY *= scale
+    }
   }
 
   const overlap = a.radius + b.radius - dist

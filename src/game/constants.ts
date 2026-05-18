@@ -20,7 +20,7 @@ export const MAX_ZOOM = 1e10
 export const CAMERA_LERP = 0.08
 export const CAMERA_PAN_LERP = 0.12
 
-export const THRUST_LEVELS = [1e5, 1e6, 1e7]
+export const THRUST_LEVELS = [1e5, 4e5, 1.6e6]
 
 export const TIME_SCALE_MAP: Record<string, number> = {
   '7': 1,

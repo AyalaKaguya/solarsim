@@ -7,6 +7,16 @@ function computeGamma(vx: number, vy: number): number {
   return 1 / Math.sqrt(1 - beta2)
 }
 
+function computeVelocityFromMomentum(px: number, py: number, mass: number): { vx: number, vy: number, gamma: number } {
+  const p2 = px * px + py * py
+  const gamma = Math.sqrt(1 + p2 / (mass * mass * C2))
+  return {
+    vx: px / (gamma * mass),
+    vy: py / (gamma * mass),
+    gamma,
+  }
+}
+
 export class PhysicsSystem {
   beginFrame(objects: GameObject[]): void {
     for (const obj of objects) {
@@ -64,22 +74,25 @@ export class PhysicsSystem {
       if (obj.isStatic) continue
 
       obj.gamma = computeGamma(obj.velX, obj.velY)
-      const effectiveMass = obj.mass * obj.gamma
+      let momentumX = obj.gamma * obj.mass * obj.velX
+      let momentumY = obj.gamma * obj.mass * obj.velY
 
-      const ax = obj.forceX / effectiveMass
-      const ay = obj.forceY / effectiveMass
+      momentumX += obj.forceX * dt
+      momentumY += obj.forceY * dt
 
-      obj.velX += ax * dt
-      obj.velY += ay * dt
+      const nextState = computeVelocityFromMomentum(momentumX, momentumY, obj.mass)
+      obj.velX = nextState.vx
+      obj.velY = nextState.vy
+      obj.gamma = nextState.gamma
 
       const speed = Math.sqrt(obj.velX * obj.velX + obj.velY * obj.velY)
       if (speed > SPEED_LIMIT) {
         const scale = SPEED_LIMIT / speed
         obj.velX *= scale
         obj.velY *= scale
+        obj.gamma = computeGamma(obj.velX, obj.velY)
       }
 
-      obj.gamma = computeGamma(obj.velX, obj.velY)
       obj.posX += obj.velX * dt
       obj.posY += obj.velY * dt
     }

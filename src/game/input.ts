@@ -2,6 +2,7 @@ import { THRUST_LEVELS, TIME_SCALE_MAP } from './constants'
 
 type Vec2 = { x: number, y: number }
 export type VelocityReferenceMode = 'off' | 'solar' | 'dominant-body'
+const TIME_SCALE_STEP = 10
 
 export class InputSystem {
   keys: Record<string, boolean>
@@ -88,6 +89,18 @@ export class InputSystem {
         this._toggleKeys.add(k)
       }
     }
+    else if (k === '+' || k === '=') {
+      if (!this._toggleKeys.has(k)) {
+        this._timeScale = Math.max(0, this._timeScale + TIME_SCALE_STEP)
+        this._toggleKeys.add(k)
+      }
+    }
+    else if (k === '-' || k === '_') {
+      if (!this._toggleKeys.has(k)) {
+        this._timeScale = Math.max(0, this._timeScale - TIME_SCALE_STEP)
+        this._toggleKeys.add(k)
+      }
+    }
     else if (TIME_SCALE_MAP[k] !== undefined) {
       if (!this._toggleKeys.has(k)) {
         this._timeScale = TIME_SCALE_MAP[k]
@@ -130,13 +143,30 @@ export class InputSystem {
     }
   }
 
-  getThrustForce(): Vec2 {
+  getThrustForce(velocity?: Vec2): Vec2 {
     let fx = 0
     let fy = 0
     if (this.keys['d'] || this.keys['arrowright']) fx += 1
     if (this.keys['a'] || this.keys['arrowleft']) fx -= 1
     if (this.keys['w'] || this.keys['arrowup']) fy -= 1
     if (this.keys['s'] || this.keys['arrowdown']) fy += 1
+
+    if (velocity) {
+      const speed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y)
+      if (speed > 1e-6) {
+        const dirX = velocity.x / speed
+        const dirY = velocity.y / speed
+
+        if (this.keys['z']) {
+          fx += dirX
+          fy += dirY
+        }
+        if (this.keys['x']) {
+          fx -= dirX
+          fy -= dirY
+        }
+      }
+    }
 
     if (fx === 0 && fy === 0) return { x: 0, y: 0 }
 
@@ -166,6 +196,10 @@ export class InputSystem {
 
   getShowTrajectoryPrediction(): boolean {
     return this._showTrajectoryPrediction
+  }
+
+  isVelocityBrakeActive(): boolean {
+    return this.keys['x'] === true && this.keys['z'] !== true
   }
 
   consumeWheel(): number {
