@@ -2,8 +2,8 @@
 
 ## Project Scope
 
-- This repo is a browser-based spaceflight sandbox built with React, Vite, TypeScript, and Konva.
-- React is only the mount layer in [src/App.tsx](src/App.tsx) and [src/main.tsx](src/main.tsx).
+- This repo is a browser-based spaceflight sandbox built with Vite, TypeScript, and Konva.
+- There is no framework — the entry point is a vanilla TypeScript file [src/main.ts](src/main.ts).
 - The real application entry point is `GameEngine` in [src/game/engine.ts](src/game/engine.ts).
 
 ## Run And Validate
@@ -80,7 +80,7 @@
 
 ## Editing Guidance
 
-- Preserve the thin React shell; most gameplay changes belong under [src/game](src/game).
+- Preserve the thin entry point; most gameplay changes belong under [src/game](src/game).
 - When adding a new body, use the `OrbitingBodyDefinition` interface and `createOrbitingBody()` helper, or `createGameObject()` for non-orbiting bodies.
 - If you add or remove runtime objects, confirm `_syncNodes()` and `_syncOrbitGuides()` still track them.
 - Keep new physics, camera, and HUD tuning values in [src/game/constants.ts](src/game/constants.ts).
